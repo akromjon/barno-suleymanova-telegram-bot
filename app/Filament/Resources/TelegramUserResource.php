@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\TelegramUserResource\Pages;
 use App\Models\Enums\TelegramUserChatStatus;
 use App\Models\Enums\TelegramUserStatus;
+use App\Models\Enums\TelegramUserType;
 use App\Models\TelegramUser;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
@@ -50,6 +51,7 @@ class TelegramUserResource extends Resource
             TextInput::make(name: 'username'),
             TextInput::make(name: 'phone_number'),
             DateTimePicker::make(name: 'last_used_at')->default(state: now()),
+            Select::make(name: 'type')->options(options: TelegramUserType::class),
             Select::make(name: 'chat_status')->options(options: TelegramUserChatStatus::class),
             Select::make(name: 'status')->options(options: TelegramUserStatus::class),
             Toggle::make(name: 'subscribed')->default(state: false),
@@ -106,6 +108,7 @@ class TelegramUserResource extends Resource
                 return Str::limit(value: $record->last_name, limit: 10);
             })->sortable()->searchable(),
             TextColumn::make(name: 'username')->searchable()->copyable()->sortable(),
+            TextColumn::make(name: 'type')->searchable()->copyable()->sortable(),
             TextColumn::make(name: 'last_used_at')->label(label: 'Last Used At')->dateTime()->sortable()->searchable(),
             SelectColumn::make(name: 'status')->options(options: TelegramUserStatus::class)->searchable()->sortable(),
             TextColumn::make(name: 'chat_status')

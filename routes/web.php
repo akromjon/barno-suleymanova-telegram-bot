@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\TelegramBotController;
+use App\Http\Middleware\TelegramUserChatHistoryMiddleware;
+use App\Http\Middleware\TelegramUserChatStatusUpdateMiddleware;
 use App\Http\Middleware\TelegramUserLastUsedAtUpdatorMiddleware;
 use App\Http\Middleware\TelegramWebhookAccessMiddleware;
 use Telegram\Bot\Laravel\Facades\Telegram;
@@ -65,5 +67,10 @@ Route::post(
     action: [TelegramBotController::class, 'handleWebhook']
 )
     ->withoutMiddleware(middleware: ['web'])
-    ->middleware(middleware: [TelegramUserLastUsedAtUpdatorMiddleware::class, TelegramWebhookAccessMiddleware::class]);
+    ->middleware(middleware: [
+        TelegramWebhookAccessMiddleware::class,
+        TelegramUserChatStatusUpdateMiddleware::class,
+        TelegramUserLastUsedAtUpdatorMiddleware::class,
+        TelegramUserChatHistoryMiddleware::class,
+    ]);
 

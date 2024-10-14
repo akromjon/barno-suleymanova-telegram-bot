@@ -8,4 +8,11 @@ use Illuminate\Database\Eloquent\Model;
 class TelegramNotification extends Model
 {
     use HasFactory;
+
+    protected function casts(): array
+    {
+        return [
+            'send_to' => 'array',
+        ];
+    }
 }

@@ -39,6 +39,7 @@ return new class extends Migration {
             ])->default(value: 'text');
             $table->enum(column: 'format_type', allowed: ['HTML', 'Markdown'])->default('HTML');
             $table->boolean(column: 'is_active')->default(value: true);
+            $table->json(column: 'send_to')->default(value: 'all');
             $table->timestamps();
         });
     }

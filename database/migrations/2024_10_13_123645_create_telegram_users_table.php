@@ -13,7 +13,7 @@ return new class extends Migration {
         Schema::create(table: 'telegram_users', callback: function (Blueprint $table): void {
             $table->id();
             $table->bigInteger(column: 'chat_id');
-            $table->string(column: "first_name");
+            $table->string(column: "first_name")->nullable();
             $table->string(column: 'last_name')->nullable();
             $table->string(column: 'username')->nullable();
             $table->string(column: "phone_number")->nullable();
@@ -22,6 +22,8 @@ return new class extends Migration {
             $table->enum(column: 'status', allowed: ['active', 'inactive'])->default(value: 'active');
             $table->boolean(column: 'subscribed')->default(value: false);
             $table->index(columns: 'chat_id');
+            $table->enum(column: 'role', allowed: ['user', 'admin', 'moderator'])->default(value: 'user');
+            $table->enum(column: 'type', allowed: ['private', 'group', 'supergroup', 'channel']);
             $table->string(column: 'tags')->nullable();
             $table->timestamps();
         });
@@ -32,6 +34,6 @@ return new class extends Migration {
      */
     public function down(): void
     {
-        Schema::dropIfExists('telegram_users');
+        Schema::dropIfExists(table: 'telegram_users');
     }
 };

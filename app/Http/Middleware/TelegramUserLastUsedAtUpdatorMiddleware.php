@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Models\Enums\TelegramUserChatStatus;
 use App\Models\Enums\TelegramUserStatus;
+use App\Models\Enums\TelegramUserType;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\App;
@@ -27,12 +28,19 @@ class TelegramUserLastUsedAtUpdatorMiddleware
 
         if (null === $user) {
 
-            $user = $this->createTelegramUser(chat: $chat);
+            $user = $this->createChat(chat: $chat);
+        }
+
+        if (null === $user) {
+
+            Log::error(message: "Unsupported Chat type is received :(");
+
+            return response()->json(data: [
+                'message' => 'You are unauthorized!',
+            ], status: 200);
         }
 
         $this->setTelegramUserAsGlobalVariable(user: $user);
-
-        $this->updateTelegramUserLastUsedAt(user: $user);
 
         if (TelegramUserStatus::INACTIVE === $user->status) {
 
@@ -43,12 +51,62 @@ class TelegramUserLastUsedAtUpdatorMiddleware
             ], status: 200);
         }
 
+        $this->updateTelegramUserLastUsedAt(user: $user);
+
         return $next($request);
     }
 
     private function getChat(): Collection
     {
         return getWebhookUpdate()->getChat();
+    }
+
+    private function createChat(Collection $chat): ?TelegramUser
+    {
+        // 'private', 'group', 'supergroup' or 'channel'.
+
+        return match ($chat->getType() ?? 'uknown_type') {
+            'channel' => $this->createTelegramUserAsChannel(chat: $chat),
+            'supergroup' => $this->createTelegramUserAsSupergroup(chat: $chat),
+            'group' => $this->createTelegramUserAsGroup(chat: $chat),
+            'private' => $this->createTelegramUser(chat: $chat),
+            default => null,
+        };
+    }
+
+    private function createTelegramUserAsChannel(Collection $chat): TelegramUser
+    {
+        return TelegramUser::create(attributes: [
+            'chat_id' => $chat->id,
+            'first_name' => $chat->getTitle(),
+            'username' => !empty($chat->username) ? "@$chat->username" : '',
+            'chat_status' => TelegramUserChatStatus::ACTIVE,
+            'status' => TelegramUserStatus::ACTIVE,
+            'type' => TelegramUserType::CHANNEL,
+        ]);
+    }
+
+    private function createTelegramUserAsSupergroup(Collection $chat): TelegramUser
+    {
+        return TelegramUser::create(attributes: [
+            'chat_id' => $chat->id,
+            'first_name' => $chat->getTitle(),
+            'chat_status' => TelegramUserChatStatus::ACTIVE,
+            'status' => TelegramUserStatus::ACTIVE,
+            'type' => TelegramUserType::SUPERGROUP,
+        ]);
+    }
+
+    private function createTelegramUserAsGroup(Collection $chat): TelegramUser
+    {
+        return TelegramUser::create(attributes: [
+            'chat_id' => $chat->id,
+            'first_name' => $chat->getTitle(),
+            'chat_status' => TelegramUserChatStatus::ACTIVE,
+            'status' => TelegramUserStatus::ACTIVE,
+            'type' => TelegramUserType::GROUP,
+
+        ]);
     }
 
     private function createTelegramUser(Collection $chat): TelegramUser
@@ -59,7 +117,9 @@ class TelegramUserLastUsedAtUpdatorMiddleware
             'last_name' => $chat->last_name,
             'username' => !empty($chat->username) ? "@$chat->username" : '',
             'chat_status' => TelegramUserChatStatus::ACTIVE,
-            'status' => TelegramUserStatus::ACTIVE
+            'status' => TelegramUserStatus::ACTIVE,
+            'type' => TelegramUserType::PRIVATE ,
+
         ]);
     }
 
@@ -68,7 +128,7 @@ class TelegramUserLastUsedAtUpdatorMiddleware
         // we update in the background
         defer(callback: function () use ($user): void {
 
-            $user->update([
+            $user->update(attributes: [
                 'last_used_at' => now(),
             ]);
 
@@ -77,10 +137,8 @@ class TelegramUserLastUsedAtUpdatorMiddleware
 
     private function setTelegramUserAsGlobalVariable(TelegramUser $user): void
     {
-
         App::singleton(abstract: 'telegramUser', concrete: function () use ($user): TelegramUser {
             return $user;
         });
-
     }
 }
