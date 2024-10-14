@@ -14,16 +14,15 @@ class TelegramWebhookAccessMiddleware
      *
      * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
      */
-    public function handle(Request $request, Closure $next): Response
+    public function handle(Request $request, Closure $next): Response|false
     {
         if ($request->header(key: 'x-telegram-bot-api-secret-token') !== config(key: 'telegram.bots.mybot.secret_token')) {
 
             Log::error(message: "Someone is requesting with the wrong x-telegram-bot-api-secret-token or no token");
 
-            return response()->json([
-                'message' => 'You are unauthorized!',
-            ], status: 200);
+            abort(code: 200, message: 'Someone is requesting with the wrong x-telegram-bot-api-secret-token');
 
+            return false;
             // we send 200 because, telegram marks unsuccessful requests and keeps in the pending, this overcomes load
         }
 

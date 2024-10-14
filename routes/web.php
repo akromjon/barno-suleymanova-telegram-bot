@@ -62,7 +62,7 @@ Route::get(uri: '/get-webhook-info', action: function (): JsonResponse|WebhookIn
     ]);
 });
 
-Route::post(
+Route::any(
     uri: config(key: 'telegram.bots.mybot.webhook_url'),
     action: [TelegramBotController::class, 'handleWebhook']
 )

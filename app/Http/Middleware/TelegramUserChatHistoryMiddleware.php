@@ -2,26 +2,32 @@
 
 namespace App\Http\Middleware;
 
-use App\Models\Chat;
-use App\Models\Enums\ChatStatus;
-use App\Models\Enums\MessageSender;
-use App\Models\Enums\TelegramUserStatus;
-use App\Models\TelegramUser;
-use Closure;
-use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Telegram\Bot\Laravel\Facades\Telegram;
-
+use App\Models\Enums\TelegramUserStatus;
+use App\Models\Enums\MessageSender;
+use App\Models\Enums\ChatStatus;
+use App\Models\TelegramUser;
+use Illuminate\Http\Request;
+use App\Models\Chat;
+use Closure;
 class TelegramUserChatHistoryMiddleware
 {
-    /**
-     * Handle an incoming request.
-     *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
-     */
     public function handle(Request $request, Closure $next): Response
     {
         return $next($request);
+    }
+
+    public function terminate(Request $request, Response $response): void
+    {
+        $user = $this->getTelegramUser();
+
+        if (!$user || $this->shouldTerminate(user: $user)) return;
+
+        $chat = $this->getOrCreateChat(user: $user);
+
+        $this->updateLastMessageAt(chat: $chat);
+
+        $this->createMessage(chat: $chat, user: $user);
     }
 
     private function checkIfUserIsInactive(TelegramUser $user): bool
@@ -31,7 +37,7 @@ class TelegramUserChatHistoryMiddleware
 
     private function chatExists(?Chat $chat): bool
     {
-        return null!==$chat;
+        return null !== $chat;
     }
 
     private function createChat(TelegramUser $user): Chat
@@ -47,42 +53,34 @@ class TelegramUserChatHistoryMiddleware
         $chat->update(attributes: [
             'last_messaged_at' => now(),
         ]);
-
     }
 
     private function createMessage(Chat $chat, TelegramUser $user): void
     {
         $chat->messages()->create(attributes: [
             'telegram_user_id' => $user->id,
-            'message_id'=>getWebhookUpdate()->getMessage()->getMessageId(),
+            'message_id' => getWebhookUpdate()->getMessage()->message_id ?? 0,
             'sender' => MessageSender::BOT,
             'type' => 'text',
             'text' => getWebhookUpdate()->getMessage()->getText(),
         ]);
     }
 
-    public function terminate(Request $request, Response $response): void
+    private function getTelegramUser(): ?TelegramUser
     {
-
-        $user = app(abstract: 'telegramUser');
-
-        if ($this->checkIfUserIsInactive(user: $user))
-            return;
-
-        $chat = $user->chat;
-
-        if (false === $this->chatExists(chat: $chat)) {
-
-            $chat = $this->createChat(user: $user);
-
-            return;
-        }
-
-        $this->updateLastMessageAt(chat: $chat);
-
-        $this->createMessage(chat: $chat, user: $user);
-
+        return app()->bound(abstract: 'telegramUser') ? app(abstract: 'telegramUser') : null;
     }
+
+    private function shouldTerminate($user): bool
+    {
+        return $this->checkIfUserIsInactive(user: $user) || getWebhookUpdate()->objectType() === 'my_chat_member';
+    }
+
+    private function getOrCreateChat($user): Chat
+    {
+        return $this->chatExists(chat: $user->chat) ? $user->chat : $this->createChat(user: $user);
+    }
+
 
 
 

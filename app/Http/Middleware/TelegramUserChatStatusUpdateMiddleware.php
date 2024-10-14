@@ -19,77 +19,74 @@ class TelegramUserChatStatusUpdateMiddleware
      *
      * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
      */
-    public function handle(Request $request, Closure $next): Response
+    public function handle(Request $request, Closure $next): Response|false
     {
-        $type = match (getWebhookUpdate()->objectType()) {
-            'my_chat_member' => $this->updateTelegramUser(
-                myChatMember: getWebhookUpdate()->myChatMember
-            ),
-            default => null,
-        };
+        $type = $this->processWebhookUpdate(update: getWebhookUpdate());
 
-        if (null === $type || TelegramUserChatStatus::ACTIVE === $type) {
+        if ($this->shouldProceed(type: $type)) {
 
             return $next($request);
 
         }
 
-        return response()->json(data: [
-            'message' => 'Bot is blocked',
-            'status' => 'ok',
-        ], status: 200);
+        abort(code: 200);
 
+        return false;
+    }
 
+    private function processWebhookUpdate($update): ?TelegramUserChatStatus
+    {
+        return match ($update->objectType()) {
+            'my_chat_member' => $this->updateTelegramUser(myChatMember: $update->myChatMember),
+            default => null,
+        };
     }
 
     private function updateTelegramUser(?ChatMemberUpdated $myChatMember): ?TelegramUserChatStatus
     {
-        if (null === $myChatMember) {
+        if (!$myChatMember) {
             return null;
         }
 
-        $user = $this->getTelegramUser(chat_id: $myChatMember->chat->id);
-
-        if (null === $user) {
+        $user = $this->getTelegramUser(chatId: $myChatMember->chat->id);
+        if (!$user) {
             return null;
         }
 
-        $chat_status = $this->getChatStatus(status: $myChatMember->new_chat_member->status);
+        $chatStatus = $this->determineChatStatus(status: $myChatMember->new_chat_member->status);
 
-        $this->updateTelegramUserLastUsedAt(user: $user, status: $chat_status);
+        $this->updateUserStatusAndTimestamp(user: $user, status: $chatStatus);
 
-        return $chat_status;
+        return $chatStatus;
     }
 
-    private function getTelegramUser(?int $chat_id): ?TelegramUser
+    private function getTelegramUser(int $chatId): ?TelegramUser
     {
-        return TelegramUser::where(column: 'chat_id', operator: $chat_id)->first();
+        return TelegramUser::where(column: 'chat_id', operator: $chatId)->first();
     }
 
-    private function getChatStatus(?string $status): ?TelegramUserChatStatus
+    private function determineChatStatus(string $status): TelegramUserChatStatus
     {
         return match ($status) {
-            'kicked' => TelegramUserChatStatus::BLOCKED,
-            'left' => TelegramUserChatStatus::BLOCKED,
-            'member' => TelegramUserChatStatus::ACTIVE,
-            'administrator' => TelegramUserChatStatus::ACTIVE,
+            'kicked', 'left' => TelegramUserChatStatus::BLOCKED,
+            'member', 'administrator' => TelegramUserChatStatus::ACTIVE,
             default => TelegramUserChatStatus::ACTIVE,
         };
     }
 
-
-    private function updateTelegramUserLastUsedAt(TelegramUser $user, TelegramUserChatStatus $status): void
+    private function updateUserStatusAndTimestamp(TelegramUser $user, TelegramUserChatStatus $status): void
     {
-        // we update in the background
-        defer(callback: function () use ($user, $status): void {
-
-            $user->update(attributes: [
-                'chat_status' => $status,
-                'last_used_at' => now()
-            ]);
-
-        });
+        $user->update(attributes: [
+            'chat_status' => $status,
+            'last_used_at' => now(),
+        ]);
     }
+
+    private function shouldProceed(?TelegramUserChatStatus $type): bool
+    {
+        return is_null(value: $type) || $type === TelegramUserChatStatus::ACTIVE;
+    }
+
 
 
 

@@ -20,7 +20,7 @@ class TelegramUserLastUsedAtUpdatorMiddleware
      *
      * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
      */
-    public function handle(Request $request, Closure $next): Response
+    public function handle(Request $request, Closure $next): Response|false
     {
         $chat = $this->getChat();
 
@@ -35,9 +35,9 @@ class TelegramUserLastUsedAtUpdatorMiddleware
 
             Log::error(message: "Unsupported Chat type is received :(");
 
-            return response()->json(data: [
-                'message' => 'You are unauthorized!',
-            ], status: 200);
+            abort(code: 200);
+
+            return false;
         }
 
         $this->setTelegramUserAsGlobalVariable(user: $user);
@@ -46,9 +46,9 @@ class TelegramUserLastUsedAtUpdatorMiddleware
 
             Log::error(message: "Inactive User is being accessed: ", context: $user->toArray());
 
-            return response()->json(data: [
-                'message' => 'You are unauthorized!',
-            ], status: 200);
+            abort(code: 200);
+
+            return false;
         }
 
         $this->updateTelegramUserLastUsedAt(user: $user);
