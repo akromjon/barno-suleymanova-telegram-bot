@@ -13,15 +13,18 @@ return new class extends Migration {
         Schema::create(table: 'telegram_notifications', callback: function (Blueprint $table): void {
             $table->id();
             $table->string(column: 'name');
-            $table->string(column: 'message', length: 4096);
+            $table->string(column: 'text', length: 4096)->nullable();
             $table->string(column: 'file')->nullable();
             $table->json(column: 'inline_buttons')->nullable();
+            $table->bigInteger(column: 'from_chat_id')->nullable();
+            $table->bigInteger(column: 'message_id')->nullable();
             $table->enum(column: 'type', allowed: [
                 'text',
                 'photo',
                 'audio',
                 'voice',
                 'video',
+                'video_note',
                 'animation',
                 'document',
                 'sticker',
@@ -36,6 +39,7 @@ return new class extends Migration {
                 'callback_query',
                 'edited_message',
                 'channel_post',
+                'copy_message',
             ])->default(value: 'text');
             $table->enum(column: 'format_type', allowed: ['HTML', 'Markdown'])->default('HTML');
             $table->boolean(column: 'is_active')->default(value: true);

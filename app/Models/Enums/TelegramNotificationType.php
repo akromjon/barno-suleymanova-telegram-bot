@@ -11,4 +11,6 @@ enum TelegramNotificationType: string
     case AUDIO = "audio";
     case DOCUMENT = "document";
 
+    case COPY_MESSAGE = "copy_message";
+
 }

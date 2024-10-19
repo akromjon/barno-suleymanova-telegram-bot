@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Models\Chat;
+use App\Models\Enums\TelegramUserType;
 use Illuminate\Support\ServiceProvider;
 
 use Illuminate\Database\Eloquent\Model;
@@ -25,7 +27,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        if (app()->environment('production','local')) {
+        if (app()->environment('production', 'local')) {
             URL::forceScheme('https');
         }
         Model::unguard();
@@ -34,5 +36,17 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(100);
         });
 
+
+        $this->loadViews();
+
+    }
+    private function loadViews(): void
+    {
+        view()->composer(views: 'partials.chat.private', callback: function ($view) {
+
+            $chats = Chat::with(relations: 'telegramUser')->where('type',TelegramUserType::PRIVATE)->orderBy(column: 'last_messaged_at',direction: 'desc')->get();
+
+            $view->with('chats', $chats);
+        });
     }
 }

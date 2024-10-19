@@ -13,6 +13,7 @@ return new class extends Migration {
         Schema::create(table: 'chats', callback: function (Blueprint $table): void {
             $table->id();
             $table->bigInteger(column: 'telegram_user_id');
+            $table->enum(column: 'type',allowed: ['private', 'group', 'supergroup', 'channel'])->default('private');
             $table->foreign(columns: 'telegram_user_id')->references(columns: 'id')->on(table: 'telegram_users')->onDelete(action: 'cascade');
             $table->enum(column: 'status', allowed: ['active', 'closed'])->default(value: 'active');
             $table->timestamp(column: 'last_messaged_at');

@@ -40,10 +40,15 @@ return new class extends Migration {
                 'callback_query',
                 'edited_message',
                 'channel_post',
+                'unsupport',
+                'video_note',
             ]);
+
+            $table->boolean(column: 'is_read')->default(value: false);
 
             $table->string(column: 'text', length: 4096)->nullable();
             $table->string(column: 'file')->nullable();
+            $table->string(column: 'thumb')->nullable();
 
             $table->foreign(columns: 'chat_id')->references(columns: 'id')->on(table: 'chats')->onDelete(action: 'cascade');
             $table->foreign(columns: 'user_id')->references(columns: 'id')->on(table: 'users')->onDelete(action: 'cascade');
