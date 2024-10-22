@@ -10,6 +10,7 @@ use  App\Models\Enums\TelegramUserChatStatus;
 <div>
     <div class="tyn-chat-form-enter">
         <form wire:submit="sendMessage">
+
             <textarea {{$disabled}}  wire:model="text" class="tyn-chat-form-input" name="text" id="" cols="100" rows="2"></textarea>
             <ul class="tyn-list-inline me-n2 my-1">
                 <li><button class="btn btn-icon btn-white btn-md btn-pill">
@@ -32,3 +33,4 @@ use  App\Models\Enums\TelegramUserChatStatus;
         </ul>
     </div><!-- .tyn-chat-form-enter -->
 </div>
+

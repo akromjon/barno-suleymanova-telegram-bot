@@ -61,15 +61,15 @@ class Menu
                 ]),
             ]),
         ])->row(buttons: [
-            Keyboard::inlineButton(params: [
-                'text' => '💎 Obunachilarga Yuborish',
-                'callback_data' => json_encode(value: [
-                    'm' => 'N',
-                    's' => 'sub',
-                    'i' => $params['notification_id'],
-                ]),
-            ]),
-        ]);
+                    Keyboard::inlineButton(params: [
+                        'text' => '💎 Obunachilarga Yuborish',
+                        'callback_data' => json_encode(value: [
+                            'm' => 'N',
+                            's' => 'sub',
+                            'i' => $params['notification_id'],
+                        ]),
+                    ]),
+                ]);
 
         return [
             ...$params,
@@ -90,6 +90,37 @@ class Menu
         return [
             'chat_id' => $chatId,
             'text' => '▶️ Bildirishnomani Yuborish Boshlandi!',
+        ];
+    }
+
+    public static function confirmNotificationMessage(int $chatId, int $notificationId, string $sType): array
+    {
+        $inlineButton = self::makeInlineKeyboard();
+
+        $inlineButton->row(buttons: [
+            Keyboard::inlineButton(params: [
+                'text' => 'Xa',
+                'callback_data' => json_encode(value: [
+                    'm' => 'CN', // confirm notification
+                    's' => $sType,
+                    'i' => $notificationId
+                ]),
+            ]),
+        ])->row(buttons: [
+                    Keyboard::inlineButton(params: [
+                        'text' => 'Yoq',
+                        'callback_data' => json_encode(value: [
+                            'm' => 'AN', // abort notification
+                            's' => $sType,
+                            'i' => $notificationId,
+                        ]),
+                    ]),
+                ]);
+
+        return [
+            'chat_id' => $chatId,
+            'reply_markup' => $inlineButton,
+            'text' => '🤔 Xabarnoma yuborishga ishonchingiz komilmi?'
         ];
     }
 }

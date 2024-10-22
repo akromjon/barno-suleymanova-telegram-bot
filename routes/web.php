@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\TelegramBotController;
+use App\Http\Middleware\AdminCheckMiddle;
 use App\Http\Middleware\TelegramUserChatHistoryMiddleware;
 use App\Http\Middleware\TelegramUserChatStatusUpdateMiddleware;
 use App\Http\Middleware\TelegramUserLastUsedAtUpdatorMiddleware;
@@ -67,7 +68,7 @@ Route::get(uri: '/get-webhook-info', action: function (): JsonResponse|WebhookIn
 
 
 
-Route::prefix("chats")->group(callback: function (): void {
+Route::prefix("chats")->middleware([AdminCheckMiddle::class])->group(callback: function (): void {
 
     Route::get(uri: '/', action: [ChatController::class, 'index'])->name(name: 'chats.index');
 

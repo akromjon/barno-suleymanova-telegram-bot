@@ -12,7 +12,8 @@
                 </div>
             </div>
             <div class="tyn-reply-group">
-                @if($m->type===MessageType::PHOTO || $m->type==='sticker')
+
+                @if($m->type===MessageType::PHOTO || $m->type===MessageType::STICKER)
                 <div class="tyn-reply-bubble">
                     <div class="tyn-reply-media">
                         <a href="/storage/{{$m->file}}" class="glightbox tyn-thumb" data-gallery="media-photo">

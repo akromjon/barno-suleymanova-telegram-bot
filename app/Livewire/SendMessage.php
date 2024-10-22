@@ -11,6 +11,8 @@ use App\Telegram\Telegram;
 class SendMessage extends Component
 {
 
+    public ?int $chat_id=null;
+
     public string $text;
 
     public $chat;
@@ -18,6 +20,7 @@ class SendMessage extends Component
     public function mount(Chat $chat): void
     {
         $this->chat = $chat;
+        $this->chat_id=$chat->id;
     }
 
     protected function rules(): array
@@ -28,21 +31,33 @@ class SendMessage extends Component
     }
     public function render(): Factory|View
     {
-        return view(view: 'livewire.send-message');
+
+        return view('livewire.send-message',["chat"=>$this->chat]);
     }
 
 
 
     public function sendMessage(): void
     {
+        // dd($this->chat);
+
         $this->validate();
+
+        $this->chat = Chat::find($this->chat_id);
+
+        if ($this->chat === null) {
+            // Handle case where chat is not found
+            session()->flash('error', 'Chat not found.');
+
+            return;
+        }
 
         Telegram::sendMessage(params: [
             'chat_id' => $this->chat->telegramUser->chat_id,
             'text' => $this->text,
         ]);
 
-        $this->reset();
+        $this->reset('text');
 
         $this->dispatch(event: 'message-created');
     }
