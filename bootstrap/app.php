@@ -33,6 +33,8 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $exceptions->render(function (TelegramResponseException $e) {
 
+
+
             if (403 === $e->getCode()) {
 
                 $chat_id = null;

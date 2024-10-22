@@ -2,6 +2,8 @@
 
 namespace App\Imports;
 
+use App\Models\Enums\TelegramUserChatStatus;
+use App\Models\Enums\TelegramUserType;
 use App\Models\TelegramUser;
 use GuzzleHttp\Psr7\UploadedFile;
 use Maatwebsite\Excel\Concerns\ToCollection;
@@ -19,10 +21,12 @@ class TelegramUserImport implements ToCollection, WithChunkReading
             TelegramUser::updateOrCreate(attributes: ['chat_id' => $c[0]], values: [
                 'first_name' => $c[1],
                 'last_name' => $c[2],
-                'username' => $c[4]!==null ? '@' . $c[4] : '',
+                'username' => $c[4] !== null ? '@' . $c[4] : '',
                 'subscribed' => $c[5] === '+' ? true : false,
                 'created_at' => $c[6],
-                'tags'=>$c[10]
+                'type' => TelegramUserType::PRIVATE,
+                'chat_status' => $c[8] === 'active' ? TelegramUserChatStatus::ACTIVE : TelegramUserChatStatus::BLOCKED,
+                'tags' => $c[10]
             ]);
 
         });

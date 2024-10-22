@@ -6,75 +6,79 @@ use App\Models\Chat;
 use App\Models\Enums\ChatStatus;
 use App\Models\Enums\MessageSender;
 use App\Models\Enums\MessageType;
+use App\Models\Enums\TelegramUserChatStatus;
 use App\Models\TelegramUser;
 use Telegram\Bot\Objects\Message as MessageObject;
 use Telegram\Bot\Laravel\Facades\Telegram as TelegramObject;
 use Illuminate\Support\Str;
 use App\Models\Message as MessageModel;
+use Exception;
+use Illuminate\Support\Facades\Log;
+use Telegram\Bot\Exceptions\TelegramResponseException;
 
 final class Telegram
 {
-    public static function sendMessage(array $params): MessageObject
+    public static function sendMessage(array $params): MessageObject|false
     {
         return self::send(method: 'sendMessage', params: $params, type: MessageType::TEXT);
     }
 
-    public static function sendVideo(array $params): MessageObject
+    public static function sendVideo(array $params): MessageObject|false
     {
         return self::send(method: 'sendVideo', params: $params, type: MessageType::VIDEO);
     }
 
-    public static function sendPhoto(array $params): MessageObject
+    public static function sendPhoto(array $params): MessageObject|false
     {
         return self::send(method: 'sendPhoto', params: $params, type: MessageType::PHOTO);
     }
 
-    public static function sendLocation(array $params): MessageObject
+    public static function sendLocation(array $params): MessageObject|false
     {
         return self::send(method: 'sendLocation', params: $params, type: MessageType::LOCATION);
     }
 
-    public static function sendVoice(array $params): MessageObject
+    public static function sendVoice(array $params): MessageObject|false
     {
         return self::send(method: 'sendVoice', params: $params, type: MessageType::VOICE);
     }
 
-    public static function sendAudio(array $params): MessageObject
+    public static function sendAudio(array $params): MessageObject|false
     {
         return self::send(method: 'sendAudio', params: $params, type: MessageType::AUDIO);
     }
 
-    public static function sendContact(array $params): MessageObject
+    public static function sendContact(array $params): MessageObject|false
     {
         return self::send(method: 'sendContact', params: $params, type: MessageType::CONTACT);
     }
 
-    public static function sendVideoNote(array $params): MessageObject
+    public static function sendVideoNote(array $params): MessageObject|false
     {
         return self::send(method: 'sendVideoNote', params: $params, type: MessageType::VIDEO_NOTE);
     }
 
-    public static function sendSticker(array $params): MessageObject
+    public static function sendSticker(array $params): MessageObject|false
     {
         return self::send(method: 'sendSticker', params: $params, type: MessageType::STICKER);
     }
 
-    public static function sendDocument(array $params): MessageObject
+    public static function sendDocument(array $params): MessageObject|false
     {
         return self::send(method: 'sendDocument', params: $params, type: MessageType::DOCUMENT);
     }
 
-    public static function forwardMessage(array $params): MessageObject
+    public static function forwardMessage(array $params): MessageObject|false
     {
         return self::send(method: 'forwardMessage', params: $params, type: MessageType::TEXT);
     }
 
-    public static function copyMessage(array $params): MessageObject
+    public static function copyMessage(array $params): MessageObject|false
     {
         return self::sendCopyMessage(method: 'copyMessage', params: $params);
     }
 
-    private static function sendCopyMessage(string $method, array $params): MessageObject
+    private static function sendCopyMessage(string $method, array $params): MessageObject|false
     {
         $response = TelegramObject::{$method}($params);
 
@@ -126,15 +130,58 @@ final class Telegram
     }
 
 
-    private static function send(string $method, array $params, MessageType $type): MessageObject
+    private static function send(string $method, array $params, MessageType $type): MessageObject|false
     {
-        $response = TelegramObject::{$method}($params);
+        try {
 
-        defer(callback: function () use ($type, $params, $response): void {
-            self::storeMessage(type: $type, params: $params, messageId: $response->getMessageId());
-        });
+            $response = TelegramObject::{$method}($params);
 
-        return $response;
+            defer(callback: function () use ($type, $params, $response): void {
+                self::storeMessage(type: $type, params: $params, messageId: $response->getMessageId());
+            });
+
+            return $response;
+
+        } catch (TelegramResponseException $e) {
+
+            logger($e->getCode());
+
+            if (in_array($e->getCode(),[400,403])) {
+
+                $chat_id = null;
+
+                $data = $e->getResponse()->getRequest()->getParams();
+
+                if (array_key_exists('multipart', $data)) {
+
+                    foreach ($data['multipart'] as $part) {
+
+                        if ($part['name'] === 'chat_id') {
+                            $chat_id = $part['contents'];
+                            break;
+                        }
+                    }
+                }
+
+                if (array_key_exists('form_params', $data)) {
+                    $chat_id = $data['form_params']['chat_id'];
+                }
+
+                if (is_int($chat_id)) {
+
+                    TelegramUser::where('chat_id', $chat_id)
+                        ->update(['chat_status' => TelegramUserChatStatus::BLOCKED]);
+                }
+
+                Log::error("User $chat_id is blocked the bot");
+
+            }
+
+            return false;
+        }
+
+
+
     }
 
     private static function storeMessage(MessageType $type, array $params, int $messageId): void

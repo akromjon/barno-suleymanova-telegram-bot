@@ -39,14 +39,12 @@ class SendMessage extends Component
 
     public function sendMessage(): void
     {
-        // dd($this->chat);
-
         $this->validate();
 
         $this->chat = Chat::find($this->chat_id);
 
         if ($this->chat === null) {
-            // Handle case where chat is not found
+
             session()->flash('error', 'Chat not found.');
 
             return;
