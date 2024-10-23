@@ -144,44 +144,34 @@ final class Telegram
 
         } catch (TelegramResponseException $e) {
 
-            logger($e->getCode());
-
-            if (in_array($e->getCode(),[400,403])) {
-
-                $chat_id = null;
-
-                $data = $e->getResponse()->getRequest()->getParams();
-
-                if (array_key_exists('multipart', $data)) {
-
-                    foreach ($data['multipart'] as $part) {
-
-                        if ($part['name'] === 'chat_id') {
-                            $chat_id = $part['contents'];
-                            break;
-                        }
-                    }
-                }
-
-                if (array_key_exists('form_params', $data)) {
-                    $chat_id = $data['form_params']['chat_id'];
-                }
-
-                if (is_int($chat_id)) {
-
-                    TelegramUser::where('chat_id', $chat_id)
-                        ->update(['chat_status' => TelegramUserChatStatus::BLOCKED]);
-                }
-
-                Log::error("User $chat_id is blocked the bot");
-
-            }
+            self::handeCatch(
+                code: $e->getCode(),
+                chatId: $params['chat_id'],
+            );
 
             return false;
         }
 
 
 
+    }
+
+    private static function handeCatch(mixed $code, int $chatId): void
+    {
+
+        if (!in_array($code, [400, 403])) {
+
+            $code=(string)$code;
+
+            Log::error("Erro is happened with $code");
+
+            return;
+        }
+
+        TelegramUser::where('chat_id', $chatId)
+            ->update(['chat_status' => TelegramUserChatStatus::BLOCKED]);
+
+        Log::error("User $chatId is blocked the bot");
     }
 
     private static function storeMessage(MessageType $type, array $params, int $messageId): void
