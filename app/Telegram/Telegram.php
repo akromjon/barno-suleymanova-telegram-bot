@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Telegram;
 
 use App\Models\Chat;
@@ -161,7 +163,7 @@ final class Telegram
 
         if (!in_array($code, [400, 403])) {
 
-            $code=(string)$code;
+            $code = (string) $code;
 
             Log::error("Erro is happened with $code");
 
@@ -176,33 +178,47 @@ final class Telegram
 
     private static function storeMessage(MessageType $type, array $params, int $messageId): void
     {
-        $user = TelegramUser::where(column: 'chat_id', operator: $params['chat_id'])
+        $user = self::getUser(chatId: $params['chat_id']);
+
+        if (null === $user) {
+            return;
+        }
+
+        $chat = self::getChatOrCreate(user: $user);
+
+        $attributes = self::getMessageType(type: $type, params: $params);
+
+        if (false === $attributes) {
+            return;
+        }
+
+        $attributes = array_merge($attributes, [
+            'telegram_user_id' => $user->id,
+            'chat_id' => $chat->id,
+            'message_id' => $messageId,
+            'type' => $type,
+            'sender' => MessageSender::BOT,
+        ]);
+
+        self::createMessage(attributes: $attributes, chat: $chat);
+    }
+
+    private static function getUser(int $chatId): ?TelegramUser
+    {
+        return TelegramUser::where(column: 'chat_id', operator: $chatId)
             ->with(relations: 'chat')
             ->first();
+    }
 
-        $chat = $user->chat ?? $user->chat()->create(attributes: [
+    private static function getChatOrCreate(TelegramUser $user): Chat
+    {
+        return $user->chat ?? $user->chat()->create(attributes: [
             'status' => ChatStatus::ACTIVE,
             'last_messaged_at' => now(),
         ]);
-
-        $attributes = self::matchMessageType(type: $type, params: $params);
-
-        if (!empty($attributes)) {
-
-            self::createMessage(attributes: [
-                ...$attributes,
-                ...[
-                    'telegram_user_id' => $user->id,
-                    'chat_id' => $chat->id,
-                    'message_id' => $messageId,
-                    'type' => $type,
-                    'sender' => MessageSender::BOT,
-                ]
-            ], chat: $chat);
-        }
     }
 
-    private static function matchMessageType(MessageType $type, array $params): array
+    private static function getMessageType(MessageType $type, array $params): array|false
     {
         return match ($type) {
             MessageType::TEXT => ['text' => $params['text']],
@@ -224,7 +240,7 @@ final class Telegram
             MessageType::LOCATION => [
                 'text' => "{$params['latitude']}x{$params['longitude']}",
             ],
-            default => [],
+            default => false,
         };
     }
 

@@ -1,5 +1,8 @@
 <?php
 
+declare(strict_types=1);
+
+
 namespace App\Telegram\FSM;
 
 use Telegram\Bot\Laravel\Facades\Telegram;

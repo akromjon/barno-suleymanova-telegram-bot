@@ -39,6 +39,7 @@ class SendMessage extends Component
 
     public function sendMessage(): void
     {
+
         $this->validate();
 
         $this->chat = Chat::find($this->chat_id);

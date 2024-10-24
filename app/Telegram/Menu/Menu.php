@@ -1,5 +1,8 @@
 <?php
 
+declare(strict_types=1);
+
+
 namespace App\Telegram\Menu;
 
 use Telegram\Bot\Keyboard\Keyboard;
